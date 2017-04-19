@@ -806,10 +806,6 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
     }
     [self setAccesoryViewsHidden:NO];
     
-    if (_delegate && [_delegate respondsToSelector:@selector(swipeTableCellWillEndSwiping:)]) {
-        [_delegate swipeTableCellWillEndSwiping:self];
-    }
-    
     if (_tapRecognizer) {
         [self removeGestureRecognizer:_tapRecognizer];
         _tapRecognizer = nil;
@@ -1240,51 +1236,60 @@ static inline CGFloat mgEaseInOutBounce(CGFloat t, CGFloat b, CGFloat c) {
     }
     else {
         __weak MGSwipeButtonsView * expansion = _activeExpansion;
-        if (expansion) {
-            __weak UIView * expandedButton = [expansion getExpandedButton];
-            MGSwipeExpansionSettings * expSettings = _swipeOffset > 0 ? _leftExpansion : _rightExpansion;
-            UIColor * backgroundColor = nil;
-            if (!expSettings.fillOnTrigger && expSettings.expansionColor) {
-                backgroundColor = expansion.backgroundColorCopy; //keep expansion background color
-                expansion.backgroundColorCopy = expSettings.expansionColor;
-            }
-            [self setSwipeOffset:_targetOffset animation:expSettings.triggerAnimation completion:^(BOOL finished){
-                if (!finished || self.hidden || !expansion) {
-                    return; //cell might be hidden after a delete row animation without being deallocated (to be reused later)
-                }
-                BOOL autoHide = [expansion handleClick:expandedButton fromExpansion:YES];
-                if (autoHide) {
-                    [expansion endExpansionAnimated:NO];
-                }
-                if (backgroundColor && expandedButton) {
-                    expandedButton.backgroundColor = backgroundColor;
-                }
-            }];
+        
+        if (_delegate && [_delegate respondsToSelector:@selector(swipeTableCellWillEndSwiping:)]) {
+            [_delegate swipeTableCellWillEndSwiping:self];
         }
         else {
-            CGFloat velocity = [_panRecognizer velocityInView:self].x;
-            CGFloat inertiaThreshold = 100.0; //points per second
-            
-            if (velocity > inertiaThreshold) {
-                _targetOffset = _swipeOffset < 0 ? 0 : (_leftView  && _leftSwipeSettings.keepButtonsSwiped ? _leftView.bounds.size.width : _targetOffset);
-            }
-            else if (velocity < -inertiaThreshold) {
-                _targetOffset = _swipeOffset > 0 ? 0 : (_rightView && _rightSwipeSettings.keepButtonsSwiped ? -_rightView.bounds.size.width : _targetOffset);
-            }
-            _targetOffset = [self filterSwipe:_targetOffset];
-            MGSwipeSettings * settings = _swipeOffset > 0 ? _leftSwipeSettings : _rightSwipeSettings;
-            MGSwipeAnimation * animation = nil;
-            if (_targetOffset == 0) {
-                animation = settings.hideAnimation;
-            }
-            else if (fabs(_swipeOffset) > fabs(_targetOffset)) {
-                animation = settings.stretchAnimation;
+        
+            if (expansion) {
+                __weak UIView * expandedButton = [expansion getExpandedButton];
+                MGSwipeExpansionSettings * expSettings = _swipeOffset > 0 ? _leftExpansion : _rightExpansion;
+                UIColor * backgroundColor = nil;
+                if (!expSettings.fillOnTrigger && expSettings.expansionColor) {
+                    backgroundColor = expansion.backgroundColorCopy; //keep expansion background color
+                    expansion.backgroundColorCopy = expSettings.expansionColor;
+                }
+                [self setSwipeOffset:_targetOffset animation:expSettings.triggerAnimation completion:^(BOOL finished){
+                    if (!finished || self.hidden || !expansion) {
+                        return; //cell might be hidden after a delete row animation without being deallocated (to be reused later)
+                    }
+                    BOOL autoHide = [expansion handleClick:expandedButton fromExpansion:YES];
+                    if (autoHide) {
+                        [expansion endExpansionAnimated:NO];
+                    }
+                    if (backgroundColor && expandedButton) {
+                        expandedButton.backgroundColor = backgroundColor;
+                    }
+                }];
             }
             else {
-                animation = settings.showAnimation;
+                CGFloat velocity = [_panRecognizer velocityInView:self].x;
+                CGFloat inertiaThreshold = 100.0; //points per second
+                
+                if (velocity > inertiaThreshold) {
+                    _targetOffset = _swipeOffset < 0 ? 0 : (_leftView  && _leftSwipeSettings.keepButtonsSwiped ? _leftView.bounds.size.width : _targetOffset);
+                }
+                else if (velocity < -inertiaThreshold) {
+                    _targetOffset = _swipeOffset > 0 ? 0 : (_rightView && _rightSwipeSettings.keepButtonsSwiped ? -_rightView.bounds.size.width : _targetOffset);
+                }
+                _targetOffset = [self filterSwipe:_targetOffset];
+                MGSwipeSettings * settings = _swipeOffset > 0 ? _leftSwipeSettings : _rightSwipeSettings;
+                MGSwipeAnimation * animation = nil;
+                if (_targetOffset == 0) {
+                    animation = settings.hideAnimation;
+                }
+                else if (fabs(_swipeOffset) > fabs(_targetOffset)) {
+                    animation = settings.stretchAnimation;
+                }
+                else {
+                    animation = settings.showAnimation;
+                }
+                [self setSwipeOffset:_targetOffset animation:animation completion:nil];
             }
-            [self setSwipeOffset:_targetOffset animation:animation completion:nil];
+            
         }
+        
         
         _firstSwipeState = MGSwipeStateNone;
     }
